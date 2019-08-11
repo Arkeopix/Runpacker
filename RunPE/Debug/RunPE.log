@@ -1,3 +1,0 @@
-﻿  RunPE.c
-C:\pin\source\tools\RunPE\RunPE.c(173,17): warning C4047:  '==': 'void *' differs in levels of indirection from 'DWORD'
-  RunPE.vcxproj -> C:\pin\source\tools\MyPinTool\Debug\RunPE.exe
