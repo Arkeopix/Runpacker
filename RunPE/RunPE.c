@@ -219,7 +219,7 @@ DWORD wmain(DWORD argc, PWCHAR* argv) {
 
 	PIMAGE_SECTION_HEADER section = { 0 };
 	for (DWORD i = 0; i < injected_nt_headers->FileHeader.NumberOfSections; i++) {
-		section = (PIMAGE_SECTION_HEADER)(PVOID)(((DWORD)self_bytes + sections_start) + (i * sizeof(*section)));
+		section = (PIMAGE_SECTION_HEADER)(((DWORD)self_bytes + sections_start) + (i * sizeof(*section)));
 		ret = WriteProcessMemory(target_info.hProcess, (PVOID)((DWORD)(target_base_address) + section->VirtualAddress), (PVOID)((DWORD)self_bytes + section->PointerToRawData), section->SizeOfRawData, NULL);
 		if (FALSE == ret) {
 			ret = -1;
