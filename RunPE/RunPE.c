@@ -250,7 +250,6 @@ DWORD wmain(DWORD argc, PWCHAR* argv) {
 		ret = -1;
 		goto clean_exit;
 	}
-	printf("coucou\n");
 	ret = 0;
 clean_exit:
 	if (NULL != self_bytes) {
