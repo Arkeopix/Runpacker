@@ -9,6 +9,14 @@ struct bin_part {
 	uint8_t *data;         /* The actual data */
 };
 
+struct PROCESS_INFO {
+	void* hProcess;
+	void* hThread;
+	INT32 dwProcessId;
+	INT32 dwThreadId;
+};
+
+struct PROCESS_INFO* process_info = NULL;
 std::vector<struct bin_part> remote_bin_parts;
 
 KNOB<std::string> knob_dump_file(KNOB_MODE_WRITEONCE, "pintool", "o", "unpacked.exe", "Dump file");
@@ -47,13 +55,18 @@ static void save_bytes(ADDRINT base_address, ADDRINT buffer, ADDRINT size) {
 	}
 }
 
-static void createprocess_entry_handler(char *function_name, unsigned long process_creation_flag) {
-	printf("Looking for creation flag in %s\n", function_name);
+static void createprocess_entry_handler(char *function_name, unsigned long process_creation_flag, ADDRINT process_info_address) {
+	process_info = (struct PROCESS_INFO *)process_info_address;
+	printf("Looking for creation flag in %s", function_name);
 	if (0x4 != process_creation_flag) {
 		fprintf(stderr, "Not suspended\n");
 		PIN_ExitProcess(1);
 	}
 	printf("found CREATE_SUSPENDED flag\n");
+}
+
+static void save_pid(char* function_name) {
+	printf("Saving child pid in exit %s. PID is %d\n", function_name, process_info->dwProcessId);
 }
 
 static void instrument_image(IMG image, void *v) {
@@ -64,9 +77,6 @@ static void instrument_image(IMG image, void *v) {
 	if (0 == image_name.compare(image_name.size() - strlen("kernelbase.dll"), strlen("kernelbase.dll"), "KernelBase.dll")) {
 		printf("Instrumenting image: %s\n", image_name.c_str());
 
-		/* TODO: Maybe i should instrument IPOINT_AFTER in order to get process information and pid to kill the child after i'm done. */
-		/*       Howerver, that would mean using PinCRT and that seems like a whole lot of trouble */
-		/*       I would maybe have to look at IARG_FUNCRET_EXITPOINT_* but not quite sure right now */
 		for (size_t i = 0; i <= 1; i++) { 
 			const RTN routine = RTN_FindByName(image, functions[i]);
 			if (RTN_Valid(routine)) {
@@ -77,6 +87,11 @@ static void instrument_image(IMG image, void *v) {
 					IPOINT_BEFORE, (AFUNPTR)createprocess_entry_handler, 
 					IARG_ADDRINT, RTN_Name(routine).c_str(),
 					IARG_FUNCARG_ENTRYPOINT_VALUE, 5, 
+					IARG_END
+				);
+				RTN_InsertCall(routine,
+					IPOINT_AFTER, (AFUNPTR)save_pid,
+					IARG_ADDRINT, RTN_Name(routine).c_str(),
 					IARG_END
 				);
 				RTN_Close(routine);
